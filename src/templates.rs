@@ -107,7 +107,6 @@ pub(crate) fn generate_main_rs(font_filename: &str) -> String {
 use ply_engine::{{
     grow, Ply,
     layout::{{LayoutAlignmentX, LayoutAlignmentY, LayoutDirection}},
-    renderer::render,
 }};
 
 fn window_conf() -> macroquad::conf::Conf {{
@@ -133,7 +132,7 @@ fn window_conf() -> macroquad::conf::Conf {{
 #[macroquad::main(window_conf)]
 async fn main() {{
     let fonts = vec![load_ttf_font("assets/fonts/{font_filename}").await.unwrap()];
-    let mut ply = Ply::<()>::new(fonts.clone());
+    let mut ply = Ply::<()>::new(fonts);
 
     loop {{
         clear_background(BLACK);
@@ -153,7 +152,7 @@ async fn main() {{
                 );
             }});
 
-        render(ui.eval(), &fonts, |_| {{}}).await;
+        ui.show(|_| {{}}).await;
 
         next_frame().await;
     }}

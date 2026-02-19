@@ -54,7 +54,10 @@ fn run_docker(install: bool, auto: bool) -> Result<(), String> {
     let tmp_cargo = tmp_dir.join("Cargo.toml");
     let has_build_rs = Path::new("build.rs").exists();
 
-    generate_overlay_cargo_toml(&tmp_cargo)?;
+    let project_dir = std::env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {e}"))?;
+
+    let path_dep_mounts = generate_overlay_cargo_toml(&tmp_cargo, &project_dir, true)?;
 
     // Only create a stub build.rs if the project has one — avoids Docker
     // bind mount creating an empty file on the host.
@@ -65,8 +68,6 @@ fn run_docker(install: bool, auto: bool) -> Result<(), String> {
     }
 
     // ── 5. Run Docker ──────────────────────────────────────────────────
-    let project_dir = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {e}"))?;
     let project_dir_str = project_dir.to_str()
         .ok_or("Project path contains non-UTF-8 characters")?;
 
@@ -75,6 +76,12 @@ fn run_docker(install: bool, auto: bool) -> Result<(), String> {
         "-v".to_string(), format!("{project_dir_str}:/root/src"),
         "-v".to_string(), format!("{}:/root/src/Cargo.toml", tmp_cargo.display()),
     ];
+
+    // Mount path dependencies
+    for (host_path, container_path) in &path_dep_mounts {
+        docker_args.push("-v".to_string());
+        docker_args.push(format!("{host_path}:{container_path}"));
+    }
 
     // Only overlay build.rs if the project has one
     if has_build_rs {
@@ -178,8 +185,16 @@ fn ensure_docker_image() -> Result<(), String> {
 
 /// Generate a modified Cargo.toml for Android building:
 /// - Strip `[build-dependencies]`
+/// - Rewrite `path` dependencies to Docker mount paths
 /// - Add `[package.metadata.android]` if missing
-fn generate_overlay_cargo_toml(dest: &Path) -> Result<(), String> {
+///
+/// Returns a list of (host_path, container_path) volume mounts needed for
+/// path dependencies.
+fn generate_overlay_cargo_toml(
+    dest: &Path,
+    project_dir: &Path,
+    docker_mode: bool,
+) -> Result<Vec<(String, String)>, String> {
     let cargo_str =
         fs::read_to_string("Cargo.toml").map_err(|e| format!("Failed to read Cargo.toml: {e}"))?;
 
@@ -190,13 +205,48 @@ fn generate_overlay_cargo_toml(dest: &Path) -> Result<(), String> {
     // Strip [build-dependencies]
     doc.remove("build-dependencies");
 
+    // Rewrite path dependencies: resolve to absolute paths, and in Docker mode
+    // use container mount paths instead.
+    let mut mounts: Vec<(String, String)> = Vec::new();
+    if let Some(deps) = doc.get_mut("dependencies").and_then(|d| d.as_table_like_mut()) {
+        for (name, value) in deps.iter_mut() {
+            if let Some(tbl) = value.as_inline_table_mut() {
+                if let Some(rel_path) = tbl.get("path").and_then(|p| p.as_str()).map(String::from) {
+                    let abs = project_dir.join(&rel_path);
+                    let abs = abs.canonicalize().unwrap_or(abs);
+                    let host_str = abs.to_string_lossy().to_string();
+                    if docker_mode {
+                        let container_path = format!("/root/deps/{name}");
+                        tbl.insert("path", toml_edit::Value::from(container_path.as_str()));
+                        mounts.push((host_str, container_path));
+                    } else {
+                        tbl.insert("path", toml_edit::Value::from(host_str.as_str()));
+                    }
+                }
+            } else if let Some(tbl) = value.as_table_mut() {
+                if let Some(rel_path) = tbl.get("path").and_then(|i| i.as_str()).map(String::from) {
+                    let abs = project_dir.join(&rel_path);
+                    let abs = abs.canonicalize().unwrap_or(abs);
+                    let host_str = abs.to_string_lossy().to_string();
+                    if docker_mode {
+                        let container_path = format!("/root/deps/{name}");
+                        tbl.insert("path", toml_edit::Item::Value(toml_edit::Value::from(container_path.as_str())));
+                        mounts.push((host_str, container_path));
+                    } else {
+                        tbl.insert("path", toml_edit::Item::Value(toml_edit::Value::from(host_str.as_str())));
+                    }
+                }
+            }
+        }
+    }
+
     // Add [package.metadata.android] if missing
     ensure_android_metadata(&mut doc);
 
     fs::write(dest, doc.to_string())
         .map_err(|e| format!("Failed to write overlay Cargo.toml: {e}"))?;
 
-    Ok(())
+    Ok(mounts)
 }
 
 fn ensure_android_metadata(doc: &mut toml_edit::DocumentMut) {
@@ -343,8 +393,8 @@ fn run_native(install: bool, auto: bool) -> Result<(), String> {
     // Symlink everything except Cargo.toml and build.rs
     create_symlink_overlay(&project_dir, &tmp_dir)?;
 
-    // Write modified Cargo.toml
-    generate_overlay_cargo_toml(&tmp_dir.join("Cargo.toml"))?;
+    // Write modified Cargo.toml (path dep mounts are unused in native mode)
+    generate_overlay_cargo_toml(&tmp_dir.join("Cargo.toml"), &project_dir, false)?;
 
     // Write stub build.rs
     fs::write(tmp_dir.join("build.rs"), "fn main() {}\n")
