@@ -4,6 +4,7 @@ pub mod completions;
 pub mod easter_egg;
 pub mod help;
 pub mod init;
+pub mod ios;
 pub mod web;
 
 use std::fs;

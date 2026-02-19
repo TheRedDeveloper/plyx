@@ -160,3 +160,99 @@ async fn main() {{
 "#
     )
 }
+
+pub(crate) fn generate_info_plist(binary_name: &str, bundle_id: &str, display_name: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+<key>CFBundleExecutable</key>
+<string>{binary_name}</string>
+<key>CFBundleIdentifier</key>
+<string>{bundle_id}</string>
+<key>CFBundleName</key>
+<string>{display_name}</string>
+<key>CFBundleVersion</key>
+<string>1</string>
+<key>CFBundleShortVersionString</key>
+<string>1.0</string>
+</dict>
+</plist>
+"#
+    )
+}
+
+pub(crate) fn generate_ios_actions_workflow(crate_name: &str) -> String {
+    format!(
+        r#"name: iOS Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-ios-sim
+
+      - name: Build for simulator (Apple Silicon)
+        run: cargo build --target aarch64-apple-ios-sim --release
+
+      - name: Build for device
+        run: cargo build --target aarch64-apple-ios --release
+
+      - name: Create simulator app bundle
+        run: |
+          mkdir -p build/ios/{crate_name}-sim.app/assets
+          cp target/aarch64-apple-ios-sim/release/{crate_name} build/ios/{crate_name}-sim.app/
+          cp -r assets/* build/ios/{crate_name}-sim.app/assets/ 2>/dev/null || true
+          cat > build/ios/{crate_name}-sim.app/Info.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          <key>CFBundleExecutable</key>
+          <string>{crate_name}</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.{crate_name}</string>
+          <key>CFBundleName</key>
+          <string>{crate_name}</string>
+          <key>CFBundleVersion</key>
+          <string>1</string>
+          <key>CFBundleShortVersionString</key>
+          <string>1.0</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Create device app bundle
+        run: |
+          mkdir -p build/ios/{crate_name}-device.app/assets
+          cp target/aarch64-apple-ios/release/{crate_name} build/ios/{crate_name}-device.app/
+          cp -r assets/* build/ios/{crate_name}-device.app/assets/ 2>/dev/null || true
+          cp build/ios/{crate_name}-sim.app/Info.plist build/ios/{crate_name}-device.app/Info.plist
+
+      - name: Upload simulator bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-bundle
+          path: build/ios/{crate_name}-sim.app
+
+      - name: Upload device bundle (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-device-bundle-unsigned
+          path: build/ios/{crate_name}-device.app
+"#
+    )
+}

@@ -48,6 +48,21 @@ enum Command {
         auto: bool,
     },
 
+    /// Build for iOS (simulator or device).
+    Ios {
+        /// Build for a real device instead of the simulator.
+        #[arg(long)]
+        device: bool,
+
+        /// Generate a GitHub Actions workflow for iOS CI builds.
+        #[arg(long)]
+        actions: bool,
+
+        /// Non-interactive CI mode.
+        #[arg(long)]
+        auto: bool,
+    },
+
     /// Generate shell completions.
     Completions {
         /// Shell to generate completions for.
@@ -85,6 +100,9 @@ fn main() {
             commands::apk::run(native, install, auto);
         }
         Some(Command::Web { auto }) => commands::web::run(auto),
+        Some(Command::Ios { device, actions, auto }) => {
+            commands::ios::run(device, actions, auto);
+        }
         Some(Command::Completions { shell, install }) => {
             commands::completions::run(shell, install);
         }
