@@ -103,11 +103,7 @@ pub(crate) const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
 pub(crate) fn generate_main_rs(font_filename: &str) -> String {
     format!(
-        r#"use macroquad::prelude::*;
-use ply_engine::{{
-    grow, Ply,
-    layout::{{LayoutAlignmentX, LayoutAlignmentY, LayoutDirection}},
-}};
+        r#"use ply_engine::prelude::*;
 
 fn window_conf() -> macroquad::conf::Conf {{
     macroquad::conf::Conf {{
@@ -135,15 +131,15 @@ async fn main() {{
     let mut ply = Ply::<()>::new(fonts);
 
     loop {{
-        clear_background(BLACK);
+        clear_background(MacroquadColor::new(0.0, 0.0, 0.0, 1.0));
 
         let mut ui = ply.begin();
 
         ui.element().width(grow!()).height(grow!())
             .layout(|l| l
-                .direction(LayoutDirection::TopToBottom)
+                .direction(TopToBottom)
                 .gap(16)
-                .align(LayoutAlignmentX::Center, LayoutAlignmentY::Center)
+                .align(CenterX, CenterY)
             )
             .children(|ui| {{
                 ui.text("Hello, Ply!", |t| t
