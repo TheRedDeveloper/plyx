@@ -136,11 +136,7 @@ async fn main() {{
         let mut ui = ply.begin();
 
         ui.element().width(grow!()).height(grow!())
-            .layout(|l| l
-                .direction(TopToBottom)
-                .gap(16)
-                .align(CenterX, CenterY)
-            )
+            .layout(|l| l.align(CenterX, CenterY))
             .children(|ui| {{
                 ui.text("Hello, Ply!", |t| t
                     .font_size(32)
