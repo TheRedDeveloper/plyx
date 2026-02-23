@@ -127,8 +127,8 @@ fn window_conf() -> macroquad::conf::Conf {{
 
 #[macroquad::main(window_conf)]
 async fn main() {{
-    let fonts = vec![load_ttf_font("assets/fonts/{font_filename}").await.unwrap()];
-    let mut ply = Ply::<()>::new(fonts);
+    static DEFAULT_FONT: FontAsset = FontAsset::Path("assets/fonts/{font_filename}");
+    let mut ply = Ply::<()>::new(&DEFAULT_FONT).await;
 
     loop {{
         clear_background(MacroquadColor::new(0.0, 0.0, 0.0, 1.0));
