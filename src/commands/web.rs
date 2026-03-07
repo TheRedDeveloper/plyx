@@ -109,7 +109,7 @@ fn run_inner(_auto: bool) -> Result<(), String> {
 }
 
 /// Recursively copy a directory.
-fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+pub(crate) fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     fs::create_dir_all(dst)
         .map_err(|e| format!("Failed to create {}: {e}", dst.display()))?;
 
