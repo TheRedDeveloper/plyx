@@ -58,6 +58,7 @@ fn run_inner(device: bool, actions: bool, auto: bool) -> Result<(), String> {
 
 fn build_simulator(crate_name: &str, _auto: bool) -> Result<(), String> {
     let target = simulator_target();
+    let target_dir = super::target_directory()?;
 
     // Ensure Rust target is installed
     ensure_rust_target(target)?;
@@ -75,7 +76,7 @@ fn build_simulator(crate_name: &str, _auto: bool) -> Result<(), String> {
     // 2. Create .app bundle
     let app_dir = format!("build/ios/{crate_name}.app");
     let app_path = Path::new(&app_dir);
-    create_app_bundle(crate_name, target, app_path)?;
+    create_app_bundle(crate_name, target, app_path, &target_dir)?;
 
     // 3. Boot simulator if needed
     boot_simulator_if_needed()?;
@@ -190,6 +191,7 @@ fn find_first_iphone(json_str: &str) -> Result<String, String> {
 
 fn build_device(crate_name: &str, auto: bool) -> Result<(), String> {
     let target = "aarch64-apple-ios";
+    let target_dir = super::target_directory()?;
 
     // Ensure Rust target
     ensure_rust_target(target)?;
@@ -210,7 +212,7 @@ fn build_device(crate_name: &str, auto: bool) -> Result<(), String> {
     // 2. Create .app bundle
     let app_dir = format!("build/ios/{crate_name}.app");
     let app_path = Path::new(&app_dir);
-    create_app_bundle(crate_name, target, app_path)?;
+    create_app_bundle(crate_name, target, app_path, &target_dir)?;
 
     // 3. Check provisioning profile
     let provision_path = app_path.join("embedded.mobileprovision");
@@ -392,12 +394,12 @@ fn ensure_rust_target(target: &str) -> Result<(), String> {
 }
 
 /// Create the .app bundle directory with binary, Info.plist, and assets.
-fn create_app_bundle(crate_name: &str, target: &str, app_path: &Path) -> Result<(), String> {
+fn create_app_bundle(crate_name: &str, target: &str, app_path: &Path, target_dir: &Path) -> Result<(), String> {
     fs::create_dir_all(app_path)
         .map_err(|e| format!("Failed to create {}: {e}", app_path.display()))?;
 
     // Copy binary
-    let binary_src = Path::new("target")
+    let binary_src = target_dir
         .join(target)
         .join("release")
         .join(crate_name);
@@ -405,7 +407,7 @@ fn create_app_bundle(crate_name: &str, target: &str, app_path: &Path) -> Result<
         binary_src
     } else {
         // Try underscore variant
-        let alt = Path::new("target")
+        let alt = target_dir
             .join(target)
             .join("release")
             .join(crate_name.replace('-', "_"));

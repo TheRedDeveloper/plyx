@@ -23,6 +23,8 @@ fn run_inner(_auto: bool) -> Result<(), String> {
     }
 
     let crate_name = super::read_crate_name()?;
+    let target_dir = super::target_directory()?;
+
     // ── 1. cargo build ──────────────────────────────────────────────────
     println!("Building for wasm32-unknown-unknown (release)...");
     let status = Command::new("cargo")
@@ -49,7 +51,7 @@ fn run_inner(_auto: bool) -> Result<(), String> {
     // ── 4. Copy .wasm → build/web/app.wasm ──────────────────────────────
     // Try the crate name as-is first (Cargo preserves hyphens for bin targets),
     // then fall back to the underscore variant (lib/cdylib targets).
-    let wasm_dir = Path::new("target/wasm32-unknown-unknown/release");
+    let wasm_dir = target_dir.join("wasm32-unknown-unknown/release");
     let wasm_src = wasm_dir.join(format!("{crate_name}.wasm"));
     let wasm_src = if wasm_src.exists() {
         wasm_src
