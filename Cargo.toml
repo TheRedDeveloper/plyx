@@ -1,6 +1,6 @@
 [package]
 name = "plyx"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "CLI companion for ply-engine: scaffold projects, manage fonts, build Android APKs & WASM bundles."
 keywords = ["ply", "cli", "scaffold", "android", "wasm"]

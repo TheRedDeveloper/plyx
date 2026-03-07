@@ -137,29 +137,37 @@ fn detect_enabled_features(cargo_str: &str) -> Vec<String> {
         Err(_) => return Vec::new(),
     };
 
+    let mut features = Vec::new();
+
     // Look for ply-engine in [dependencies]
-    let deps = match doc.get("dependencies") {
-        Some(d) => d,
-        None => return Vec::new(),
-    };
-
-    let ply = match deps.get("ply-engine") {
-        Some(p) => p,
-        None => return Vec::new(),
-    };
-
-    let features_array = match ply.get("features") {
-        Some(f) => f,
-        None => return Vec::new(),
-    };
-
-    match features_array.as_array() {
-        Some(arr) => arr
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect(),
-        None => Vec::new(),
+    if let Some(deps) = doc.get("dependencies") {
+        if let Some(ply) = deps.get("ply-engine") {
+            if let Some(features_array) = ply.get("features") {
+                if let Some(arr) = features_array.as_array() {
+                    for v in arr.iter() {
+                        if let Some(s) = v.as_str() {
+                            features.push(s.to_string());
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    // Check [build-dependencies] for shader-build -> maps to shader-pipeline
+    if let Some(build_deps) = doc.get("build-dependencies") {
+        if let Some(ply) = build_deps.get("ply-engine") {
+            if let Some(features_array) = ply.get("features") {
+                if let Some(arr) = features_array.as_array() {
+                    if arr.iter().any(|v| v.as_str() == Some("shader-build")) {
+                        features.push("shader-pipeline".to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    features
 }
 
 /// Apply new features to Cargo.toml using toml_edit.
@@ -195,6 +203,10 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect();
             for feat in new_features {
+                // shader-pipeline is a plyx concept, not a real Cargo feature
+                if feat == "shader-pipeline" {
+                    continue;
+                }
                 if !existing.contains(feat) {
                     arr.push(feat.as_str());
                 }
@@ -210,6 +222,10 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect();
             for feat in new_features {
+                // shader-pipeline is a plyx concept, not a real Cargo feature
+                if feat == "shader-pipeline" {
+                    continue;
+                }
                 if !existing.contains(feat) {
                     arr.push(feat.as_str());
                 }
@@ -227,8 +243,12 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
         if build_deps.is_none() {
             let mut tbl = toml_edit::InlineTable::new();
             tbl.insert(
-                "git",
-                toml_edit::Value::from("https://github.com/TheRedDeveloper/ply-engine"),
+                "version",
+                toml_edit::Value::from("1.0"),
+            );
+            tbl.insert(
+                "default-features",
+                toml_edit::Value::from(false),
             );
             let mut arr = toml_edit::Array::new();
             arr.push("shader-build");
