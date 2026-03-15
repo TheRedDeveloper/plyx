@@ -4,8 +4,7 @@ use std::process::Command;
 
 use crate::templates;
 
-const PLY_BUNDLE_URL: &str =
-    "https://raw.githubusercontent.com/TheRedDeveloper/ply-engine/refs/heads/main/js/ply_bundle.js";
+const PLY_BUNDLE: &[u8] = include_bytes!("../../ply_bundle_1.0.js");
 
 pub fn run(auto: bool) {
     if let Err(e) = run_inner(auto) {
@@ -101,9 +100,9 @@ fn run_inner(_auto: bool) -> Result<(), String> {
         .map_err(|e| format!("Failed to copy index.html: {e}"))?;
     println!("  Copied index.html");
 
-    // ── 7. Download ply_bundle.js (cached) ──────────────────────────────
+    // ── 7. Write bundled, version-pinned ply_bundle.js ──────────────────
     let bundle_dst = out.join("ply_bundle.js");
-    download_bundle(&bundle_dst)?;
+    write_bundled_bundle(&bundle_dst)?;
 
     // ── Done ────────────────────────────────────────────────────────────
     println!("\nWeb build ready at: build/web/");
@@ -133,51 +132,9 @@ pub(crate) fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Download ply_bundle.js from GitHub, using a local cache.
-///
-/// The cache lives at `~/.cache/plyx/ply_bundle.js`. We always try to
-/// download the latest version; if the network request fails we fall back
-/// to the cached copy.
-fn download_bundle(dest: &Path) -> Result<(), String> {
-    let cache_dir = {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        std::path::PathBuf::from(home).join(".cache").join("plyx")
-    };
-    fs::create_dir_all(&cache_dir).ok();
-    let cache_path = cache_dir.join("ply_bundle.js");
-
-    match fetch_bundle() {
-        Ok(bytes) => {
-            // Update cache
-            fs::write(&cache_path, &bytes).ok();
-            fs::write(dest, &bytes)
-                .map_err(|e| format!("Failed to write ply_bundle.js: {e}"))?;
-            println!("  Downloaded ply_bundle.js");
-        }
-        Err(fetch_err) => {
-            if cache_path.exists() {
-                eprintln!("Warning: Could not download ply_bundle.js, using cached version.");
-                fs::copy(&cache_path, dest)
-                    .map_err(|e| format!("Failed to copy cached bundle: {e}"))?;
-                println!("  Copied ply_bundle.js (cached)");
-            } else {
-                return Err(format!("Failed to download ply_bundle.js: {fetch_err}"));
-            }
-        }
-    }
+fn write_bundled_bundle(dest: &Path) -> Result<(), String> {
+    fs::write(dest, PLY_BUNDLE)
+        .map_err(|e| format!("Failed to write bundled ply_bundle.js: {e}"))?;
+    println!("  Copied bundled ply_bundle.js");
     Ok(())
-}
-
-fn fetch_bundle() -> Result<Vec<u8>, String> {
-    let response = crate::fonts::http_agent()
-        .get(PLY_BUNDLE_URL)
-        .call()
-        .map_err(|e| format!("{e}"))?;
-
-    response
-        .into_body()
-        .with_config()
-        .limit(10 * 1024 * 1024) // 10MB limit
-        .read_to_vec()
-        .map_err(|e| format!("{e}"))
 }
