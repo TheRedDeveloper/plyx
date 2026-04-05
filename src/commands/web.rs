@@ -4,7 +4,7 @@ use std::process::Command;
 
 use crate::templates;
 
-const PLY_BUNDLE: &[u8] = include_bytes!("../../ply_bundle_1.0.js");
+const PLY_BUNDLE: &[u8] = include_bytes!("../../ply_bundle_1.1.js");
 
 pub fn run(auto: bool) {
     if let Err(e) = run_inner(auto) {

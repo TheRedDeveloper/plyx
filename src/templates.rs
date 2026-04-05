@@ -41,6 +41,12 @@ pub(crate) const FEATURES: &[(&str, &str, &str, Option<&str>)] = &[
         "Sound loading and playback",
         None
     ),
+    (
+        "storage",
+        "Storage",
+        "Cross-platform persistent storage API",
+        None,
+    ),
 ];
 
 pub(crate) const BUILD_RS: &str = r#"fn main() {
@@ -69,7 +75,7 @@ edition = "2021"
 
     if ply_features.is_empty() {
         toml.push_str(
-            "ply-engine = \"1.0\"\n",
+            "ply-engine = \"1.1\"\n",
         );
     } else {
         let feat_str = ply_features
@@ -78,7 +84,7 @@ edition = "2021"
             .collect::<Vec<_>>()
             .join(", ");
         toml.push_str(&format!(
-            "ply-engine = {{ version = \"1.0\", features = [{feat_str}] }}\n"
+            "ply-engine = {{ version = \"1.1\", features = [{feat_str}] }}\n"
         ));
     }
 
@@ -87,7 +93,7 @@ edition = "2021"
         toml.push_str(
             r#"
 [build-dependencies]
-ply-engine = { version = "1.0", default-features = false, features = ["shader-build"] }
+ply-engine = { version = "1.1", default-features = false, features = ["shader-build"] }
 "#,
         );
     }

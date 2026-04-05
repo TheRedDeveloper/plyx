@@ -188,9 +188,9 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
 
     // If ply-engine is a simple string (no table), convert to inline table
     if ply_dep.is_str() {
-        let git_url = ply_dep.as_str().unwrap_or("").to_string();
+        let version = ply_dep.as_str().unwrap_or("").to_string();
         let mut tbl = toml_edit::InlineTable::new();
-        tbl.insert("git", toml_edit::Value::from(git_url));
+        tbl.insert("version", toml_edit::Value::from(version));
         *ply_dep = toml_edit::Item::Value(toml_edit::Value::InlineTable(tbl));
     }
 
@@ -244,7 +244,7 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
             let mut tbl = toml_edit::InlineTable::new();
             tbl.insert(
                 "version",
-                toml_edit::Value::from("1.0"),
+                toml_edit::Value::from("1.1"),
             );
             tbl.insert(
                 "default-features",
