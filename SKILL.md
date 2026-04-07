@@ -767,9 +767,9 @@ Feature keys recognized by plyx templates:
 - `net-json` (depends on `net`)
 - `audio`
 - `storage`
-- `skill` (plyx pseudo-feature, installs `.claude/skills/ply-engine/SKILL.md` in project)
+- `skill`
 
-`shader-pipeline` is a plyx concept that adds build-dependencies and build.rs, not a direct runtime feature key in `[dependencies]`. `skill` is also a plyx concept and does not modify Cargo features, but installs `.claude/skills/ply-engine/SKILL.md` into the project.
+`skill` and `shader-pipeline` are plyx concepts, not feature keys in `[dependencies]`. `shader-pipeline` adds build-dependencies and build.rs. `skill` installs `.claude/skills/ply-engine/SKILL.md` into the project.
 
 ### 15.3 `plyx web`
 
