@@ -1,4 +1,5 @@
 use crate::fonts;
+use crate::skill as ply_skill;
 use crate::templates::{self, FEATURES};
 use crate::tui;
 use std::fs;
@@ -132,21 +133,31 @@ fn add_font_by_name(query: &str) -> Result<(), String> {
 
 /// Detect which ply-engine features are currently enabled in Cargo.toml.
 fn detect_enabled_features(cargo_str: &str) -> Vec<String> {
-    let doc = match cargo_str.parse::<toml_edit::DocumentMut>() {
-        Ok(d) => d,
-        Err(_) => return Vec::new(),
-    };
-
     let mut features = Vec::new();
 
-    // Look for ply-engine in [dependencies]
-    if let Some(deps) = doc.get("dependencies") {
-        if let Some(ply) = deps.get("ply-engine") {
-            if let Some(features_array) = ply.get("features") {
-                if let Some(arr) = features_array.as_array() {
-                    for v in arr.iter() {
-                        if let Some(s) = v.as_str() {
-                            features.push(s.to_string());
+    if let Ok(doc) = cargo_str.parse::<toml_edit::DocumentMut>() {
+        // Look for ply-engine in [dependencies]
+        if let Some(deps) = doc.get("dependencies") {
+            if let Some(ply) = deps.get("ply-engine") {
+                if let Some(features_array) = ply.get("features") {
+                    if let Some(arr) = features_array.as_array() {
+                        for v in arr.iter() {
+                            if let Some(s) = v.as_str() {
+                                features.push(s.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check [build-dependencies] for shader-build -> maps to shader-pipeline
+        if let Some(build_deps) = doc.get("build-dependencies") {
+            if let Some(ply) = build_deps.get("ply-engine") {
+                if let Some(features_array) = ply.get("features") {
+                    if let Some(arr) = features_array.as_array() {
+                        if arr.iter().any(|v| v.as_str() == Some("shader-build")) {
+                            features.push("shader-pipeline".to_string());
                         }
                     }
                 }
@@ -154,17 +165,8 @@ fn detect_enabled_features(cargo_str: &str) -> Vec<String> {
         }
     }
 
-    // Check [build-dependencies] for shader-build -> maps to shader-pipeline
-    if let Some(build_deps) = doc.get("build-dependencies") {
-        if let Some(ply) = build_deps.get("ply-engine") {
-            if let Some(features_array) = ply.get("features") {
-                if let Some(arr) = features_array.as_array() {
-                    if arr.iter().any(|v| v.as_str() == Some("shader-build")) {
-                        features.push("shader-pipeline".to_string());
-                    }
-                }
-            }
-        }
+    if ply_skill::project_skill_file(Path::new(".")).exists() {
+        features.push("skill".to_string());
     }
 
     features
@@ -172,6 +174,19 @@ fn detect_enabled_features(cargo_str: &str) -> Vec<String> {
 
 /// Apply new features to Cargo.toml using toml_edit.
 fn apply_features(new_features: &[String]) -> Result<(), String> {
+    if new_features.iter().any(|f| f == "skill") {
+        let path = ply_skill::install_project_skill(Path::new("."))?;
+        println!("  Installed skill to {}", path.display());
+    }
+
+    let has_cargo_changes = new_features
+        .iter()
+        .any(|f| f != "shader-pipeline" && f != "skill");
+
+    if !has_cargo_changes && !new_features.iter().any(|f| f == "shader-pipeline") {
+        return Ok(());
+    }
+
     let cargo_str =
         fs::read_to_string("Cargo.toml").map_err(|e| format!("Failed to read Cargo.toml: {e}"))?;
 
@@ -203,8 +218,7 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect();
             for feat in new_features {
-                // shader-pipeline is a plyx concept, not a real Cargo feature
-                if feat == "shader-pipeline" {
+                if feat == "shader-pipeline" || feat == "skill" {
                     continue;
                 }
                 if !existing.contains(feat) {
@@ -222,8 +236,7 @@ fn apply_features(new_features: &[String]) -> Result<(), String> {
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
                 .collect();
             for feat in new_features {
-                // shader-pipeline is a plyx concept, not a real Cargo feature
-                if feat == "shader-pipeline" {
+                if feat == "shader-pipeline" || feat == "skill" {
                     continue;
                 }
                 if !existing.contains(feat) {

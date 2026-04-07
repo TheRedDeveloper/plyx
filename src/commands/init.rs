@@ -1,4 +1,5 @@
 use crate::fonts;
+use crate::skill as ply_skill;
 use crate::templates::*;
 use crate::tui;
 use std::fs;
@@ -70,6 +71,7 @@ fn run_inner() -> Result<(), String> {
 
     let enabled_refs: Vec<&str> = enabled_keys.iter().map(|s| s.as_str()).collect();
     let has_shader_pipeline = enabled_refs.contains(&"shader-pipeline");
+    let has_skill = enabled_refs.contains(&"skill");
 
     println!("\nCreating project '{name}'...");
 
@@ -101,6 +103,11 @@ fn run_inner() -> Result<(), String> {
 
     fs::write(project_dir.join(".gitignore"), "/target\n/build\n")
         .map_err(|e| format!("Failed to write .gitignore: {e}"))?;
+
+    if has_skill {
+        let path = ply_skill::install_project_skill(project_dir)?;
+        println!("  Installed skill to {}", path.display());
+    }
 
     println!("\nProject '{name}' created!");
     println!("  cd {name}");

@@ -6,6 +6,7 @@ pub fn run() {
     println!("Commands:");
     println!("  init         Scaffold a new ply-engine project");
     println!("  add          Add features or fonts to an existing project");
+    println!("  skill        Print Ply skill text or install into ~/.claude/skills");
     println!("  apk          Build an Android APK");
     println!("  web          Build for web (WASM)");
     println!("  completions  Generate shell completions");

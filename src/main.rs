@@ -3,6 +3,7 @@ use clap_complete::Shell;
 
 mod commands;
 pub mod fonts;
+pub(crate) mod skill;
 pub(crate) mod templates;
 pub(crate) mod tui;
 
@@ -24,6 +25,13 @@ enum Command {
         /// What to add (e.g. "shader-pipeline", "font comic sans").
         /// If omitted, opens interactive mode.
         args: Vec<String>,
+    },
+
+    /// Print the bundled Ply skill text, or install it into ~/.claude/skills.
+    Skill {
+        /// Install skill into ~/.claude/skills/ply-engine/SKILL.md.
+        #[arg(long)]
+        install: bool,
     },
 
     /// Build an Android APK.
@@ -96,6 +104,7 @@ fn main() {
         None => commands::help::run(),
         Some(Command::Init) => commands::init::run(),
         Some(Command::Add { args }) => commands::add::run(args),
+        Some(Command::Skill { install }) => commands::skill::run(install),
         Some(Command::Apk { native, install, auto }) => {
             commands::apk::run(native, install, auto);
         }

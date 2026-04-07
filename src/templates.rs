@@ -47,6 +47,12 @@ pub(crate) const FEATURES: &[(&str, &str, &str, Option<&str>)] = &[
         "Cross-platform persistent storage API",
         None,
     ),
+    (
+        "skill",
+        "Skill",
+        "Install Ply skill into .claude/skills/ply-engine",
+        None,
+    ),
 ];
 
 pub(crate) const BUILD_RS: &str = r#"fn main() {
@@ -68,7 +74,7 @@ edition = "2021"
 
     let mut ply_features: Vec<&str> = Vec::new();
     for &key in features {
-        if key != "shader-pipeline" {
+        if key != "shader-pipeline" && key != "skill" {
             ply_features.push(key);
         }
     }

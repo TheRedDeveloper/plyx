@@ -14,6 +14,7 @@ cargo install plyx
 |--------------------|---------------------------------------|
 | `plyx init`        | Scaffold a new Ply project            |
 | `plyx add`         | Add features or fonts to your project |
+| `plyx skill`       | Print/install the bundled Ply skill   |
 | `plyx web`         | Build for web (WASM)                  |
 | `plyx apk`         | Build an Android APK                  |
 | `plyx ios`         | Build for iOS                         |
