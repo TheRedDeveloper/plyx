@@ -26,8 +26,18 @@ fn run_inner(_auto: bool) -> Result<(), String> {
 
     // ── 1. cargo build ──────────────────────────────────────────────────
     println!("Building for wasm32-unknown-unknown (release)...");
+    
+    let mut encoded_flags = std::env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+    if !encoded_flags.is_empty() {
+        encoded_flags.push('\x1f');
+    }
+    encoded_flags.push_str("-C");
+    encoded_flags.push('\x1f');
+    encoded_flags.push_str("link-args=--allow-undefined");
+
     let status = Command::new("cargo")
         .args(["build", "--release", "--target", "wasm32-unknown-unknown"])
+        .env("CARGO_ENCODED_RUSTFLAGS", encoded_flags)
         .status()
         .map_err(|e| format!("Failed to run cargo: {e}"))?;
 
